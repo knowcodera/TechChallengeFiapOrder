@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using OrderApi.Models;
 using OrderApi.Repositories;
-using PaymentApi.Services;
+using OrderApi.Services;
 
 namespace OrderApi.Controllers
 {
@@ -10,9 +10,9 @@ namespace OrderApi.Controllers
     public class OrderController : ControllerBase
     {
         private readonly IOrderRepository _repository;
-        private readonly RabbitMQPublisher _publisher;
+        private readonly IRabbitMQPublisher _publisher;
 
-        public OrderController(IOrderRepository repository, RabbitMQPublisher publisher)
+        public OrderController(IOrderRepository repository, IRabbitMQPublisher publisher)
         {
             _repository = repository;
             _publisher = publisher;

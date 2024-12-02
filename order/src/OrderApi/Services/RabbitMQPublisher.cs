@@ -1,9 +1,9 @@
 ﻿using RabbitMQ.Client;
 using System.Text;
 
-namespace PaymentApi.Services
+namespace OrderApi.Services
 {
-    public class RabbitMQPublisher
+    public class RabbitMQPublisher : IRabbitMQPublisher
     {
         private readonly RabbitMQConnection _connection;
 
@@ -15,21 +15,9 @@ namespace PaymentApi.Services
         public void Publish(string queueName, string message)
         {
             using var channel = _connection.GetChannel();
-
-            channel.QueueDeclare(
-                queue: queueName,
-                durable: true,
-                exclusive: false,
-                autoDelete: false,
-                arguments: null);
-
+            channel.QueueDeclare(queue: queueName, durable: true, exclusive: false, autoDelete: false, arguments: null);
             var body = Encoding.UTF8.GetBytes(message);
-
-            channel.BasicPublish(
-                exchange: "",
-                routingKey: queueName,
-                basicProperties: null,
-                body: body);
+            channel.BasicPublish(exchange: "", routingKey: queueName, basicProperties: null, body: body);
         }
     }
 }

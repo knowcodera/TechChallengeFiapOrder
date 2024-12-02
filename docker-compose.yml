@@ -1,49 +1,53 @@
 version: '3.9'
 services:
-  sqlserver:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: sqlserver
-    environment:
-      ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "PA55w0rd2024"
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq_order
     ports:
-      - "1433:1433"
+      - "5674:5672"
+      - "15674:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  order:
+    build:
+      context: ./order
+      dockerfile: Dockerfile
+    container_name: api_order
+    ports:
+      - "8680:8580"
+    environment:
+      - RabbitMQ__HostName=rabbitmq
+      - RabbitMQ__UserName=guest
+      - RabbitMQ__Password=guest
+      - DB_CONNECTION_STRING=mongodb://mongodb:27018/OrderDB
+    depends_on:
+      - rabbitmq
+      - mongodb
     networks:
       - backend
-  api: 
-    image: store:dev
-    container_name: api
-    build:
-      context: ./store
-      dockerfile: Dockerfile
-    environment:
-      - DBServer=sqlserver
-      - DBPort=1433
-      - DBUser=SA
-      - DBPassword=PA55w0rd2024
-      - Database=Fiap
-    ports:
-      - "8080:8080"
-      - "8081:8081"
-    networks:
-      - backend  
-    depends_on:
-      - sqlserver
 
-  apipayment: 
-    image: payment:dev
-    container_name: apipayment
-    build:
-      context: ./payment
-      dockerfile: Dockerfile
+  # order_tests:
+  #   build:
+  #     context: ./order
+  #     dockerfile: Dockerfile.tests
+  #   container_name: order_tests
+  #   command: dotnet test --logger "console;verbosity=detailed"
+  #   depends_on:
+  #     - rabbitmq
+  #     - mongodb
+  #   networks:
+  #     - backend
+
+  mongodb:
+    image: mongo
+    container_name: mongodb_order
     ports:
-      - "8480:8480"
-      - "8481:8481"
+      - "27019:27017"
     networks:
-      - backend  
-    depends_on:
-      - api
-      
+      - backend
+
 networks:
   backend:
     driver: bridge

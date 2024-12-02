@@ -1,6 +1,6 @@
 ﻿using RabbitMQ.Client;
 
-namespace PaymentApi.Services
+namespace OrderApi.Services
 {
     public class RabbitMQConnection
     {

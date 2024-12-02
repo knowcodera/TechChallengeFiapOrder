@@ -2,7 +2,7 @@
 using RabbitMQ.Client.Events;
 using System.Text;
 
-namespace PaymentApi.Services
+namespace OrderApi.Services
 {
     public class RabbitMQConsumer
     {
