@@ -1,4 +1,4 @@
-name: Build and Deploy Order API to Azure AKS
+name: Build, Analyze, and Deploy Order API to Azure AKS
 
 on:
   push:
@@ -12,10 +12,11 @@ env:
   ACR_NAME: ${{ secrets.AZURE_ACR_NAME }}
   RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
   AKS_CLUSTER_NAME: ${{ secrets.AZURE_AKS_CLUSTER_NAME }}
-  DB_CONNECTION_STRING: ${{ secrets.ORDER_DB_CONNECTION_STRING }}
+  DB_CONNECTION_STRING: ${{ secrets.DB_CONNECTION_STRING }}
+  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
 jobs:
-  build-and-deploy:
+  build-analyze-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -23,13 +24,33 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Step 2: Set up .NET Core
+      # Step 2: Set up Java 17 for SonarCloud
+      - name: Set up Java 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # Ensure Java 17 is being used
+      - name: Verify Java Version
+        run: java -version
+
+      # Step 3: Set up .NET Core
       - name: Set up .NET Core
         uses: actions/setup-dotnet@v2
         with:
           dotnet-version: '8.0.x'
 
-      # Step 3: Clean and Build Order API
+      # Step 4: Install SonarScanner for .NET
+      - name: Install dotnet-sonarscanner
+        run: dotnet tool install --global dotnet-sonarscanner
+
+      # Step 5: Prepare SonarCloud Analysis
+      - name: SonarCloud Scan - Begin
+        run: |
+          dotnet sonarscanner begin /k:"knowcodera_TechChallengeFiapOrder" /o:"knowcodera" /d:sonar.login="${{ secrets.SONAR_TOKEN }}" /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" /d:sonar.verbose=true /d:sonar.qualitygate.wait=true
+
+      # Step 6: Clean and Build Order API
       - name: Clean Order API
         run: dotnet clean ./order/src/OrderApi/OrderApi.csproj
 
@@ -39,15 +60,19 @@ jobs:
       - name: Build Order API
         run: dotnet build ./order/src/OrderApi/OrderApi.csproj --configuration Release --no-restore
 
-      # Step 4: Run Tests (Optional but Recommended)
-      - name: Run Unit Tests
-        run: dotnet test ./order/src/OrderTests/ --logger "console;verbosity=detailed"
+      # Step 7: Run Unit Tests with Code Coverage
+      - name: Run Unit Tests with Coverage
+        run: dotnet test ./order/src/OrderTests/ --collect:"Code Coverage"
 
-      # Step 5: Setup Docker Buildx
+      # Step 8: Finalize SonarCloud Analysis
+      - name: SonarCloud Scan - End
+        run: dotnet sonarscanner end /d:sonar.login="${{ secrets.SONAR_TOKEN }}"
+
+      # Step 9: Setup Docker Buildx
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      # Step 6: Login to Azure Container Registry (ACR) using Azure Credentials
+      # Step 10: Login to Azure Container Registry (ACR) using Azure Credentials
       - name: Log in to Azure Container Registry (ACR)
         uses: azure/docker-login@v1
         with:
@@ -55,13 +80,13 @@ jobs:
           username: ${{ secrets.AZURE_CLIENT_ID }}
           password: ${{ secrets.AZURE_CLIENT_SECRET }}
 
-      # Step 7: Build and Push Docker image for Order API
+      # Step 11: Build and Push Docker image for Order API
       - name: Build and Push Docker Image
         run: |
           docker build -t ${{ env.ACR_NAME }}.azurecr.io/order:latest ./order
           docker push ${{ env.ACR_NAME }}.azurecr.io/order:latest
 
-      # Step 8: Deploy to AKS
+      # Step 12: Deploy to AKS
       - name: Set up kubectl
         uses: azure/setup-kubectl@v3
         with:
