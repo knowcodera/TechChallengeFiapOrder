@@ -12,13 +12,10 @@ spec:
       labels:
         app: order-api
     spec:
+      imagePullSecrets:
+      - name: acr-secret
       containers:
       - name: order-api
-        image: knowcodera/techchallengefiaporder:latest
+        image: mycontainerregistrytechchallenge.azurecr.io/order:latest
         ports:
-        - containerPort: 8080
-        envFrom:
-        - configMapRef:
-            name: order-api-config
-        - secretRef:
-            name: order-api-secret
+        - containerPort: 8580
